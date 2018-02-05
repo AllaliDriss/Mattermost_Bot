@@ -6,41 +6,190 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="{{ '/assets/css/style.css?v=' | append: site.github.build_revision | relative_url }}">
 
-{% seo %}
-  </head>
 
-  <body>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <!--link rel="icon" href="assets/favicon.ico" />-->
+    <title>Slack Quizbot Quiz Builder</title>
+    <meta name="description" content="Tool to build quizzes for Slack Quizbot ">
+    <link data-require="jqueryui" data-semver="1.10.0" rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jqueryui/1.10.0/css/smoothness/jquery-ui-1.10.0.custom.min.css" />
+    <script data-require="jquery" data-semver="2.1.1" src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script data-require="jqueryui" data-semver="1.10.0" src="//cdnjs.cloudflare.com/ajax/libs/jqueryui/1.10.0/jquery-ui.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular-animate.min.js"></script>
+	<script src="//angular-ui.github.io/bootstrap/ui-bootstrap-tpls-0.13.1.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/angular-ui-sortable/0.13.2/sortable.min.js"></script>
+    <script src="assets/app.js"></script>
 
-    <header>
-      <div class="container">
-        <h1>{{ site.title | default: site.github.repository_name }}</h1>
-        <h2>{{ site.description | default: site.github.project_tagline }}</h2>
-
-        <section id="downloads">
-          {% if site.show_downloads %}
-            <a href="{{ site.github.zip_url }}" class="btn">Download as .zip</a>
-            <a href="{{ site.github.tar_url }}" class="btn">Download as .tar.gz</a>
-          {% endif %}
-          <a href="{{ site.github.repository_url }}" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
-        </section>
-      </div>
-    </header>
-
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="assets/quiz.css" rel="stylesheet"/>
+    <link rel="author" href="http://codebyfire.com">
+</head>{% seo %}
+<body ng-cloak="true" ng-controller="QuizCtrl">
+    
+    <script type="text/ng-template" id="import.html">
+        <div class="modal-header">
+            <h3 class="modal-title text-center">Import Quiz</h3>
+        </div>
+        <div class="modal-body">
+            <form class="form-horizontal">
+                <div class="form-group">
+                    <div class="col-md-12">
+                        <textarea ng-model="importedJSON" class="form-control" id="inputImport" placeholder="Paste your existing quiz JSON here"></textarea>    
+                    </div>
+                </div> 
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" ng-click="ok()">Import</button>
+            <button class="btn btn-warning" type="button" ng-click="cancel()">Cancel</button>
+        </div>
+    </script>
+    
+    <script type="text/ng-template" id="settings.html">
+        <div class="modal-header">
+            <h3 class="modal-title text-center">Quiz Settings</h3>
+        </div>
+        <div class="modal-body">
+            <form class="form-horizontal">
+                <div class="form-group">
+                    <label class="control-label col-md-6" for="inputQuestionTime">Default question time (seconds):</label>
+                    <div class="col-md-2">
+                        <input type="number" ng-model="settings.questionTime" class="form-control" id="inputQuestionTime" placeholder="60" min="10" max="10000">
+                    </div>
+                </div> 
+                <div class="form-group">
+                    <label class="control-label col-md-6" for="inputPointsPerQuestion">Default question points:</label>
+                    <div class="col-md-2">
+                        <input type="number" ng-model="settings.pointsPerQuestion" class="form-control" id="inputPointsPerQuestion" placeholder="1" min="1" max="100">
+                    </div>
+                </div> 
+                <div class="form-group">
+                    <label class="control-label col-md-6" for="inputQuestionGap">Time between questions (seconds):</label>
+                    <div class="col-md-2">
+                        <input type="number" ng-model="settings.questionGap" class="form-control" id="inputQuestionGap" placeholder="20" min="5" max="10000">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-6" for="inputRandomise">Randomise order:</label>
+                    <div class="col-md-2">
+                        <input type="checkbox" ng-model="settings.randomise" id="inputRandomise">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-6" for="inputTotalQuestions">Total questions to use:</label>
+                    <div class="col-md-2">
+                        <input type="number" ng-model="settings.totalQuestions" class="form-control" id="inputTotalQuestions" placeholder="{{questions.length}}" min="1" max="10000">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" ng-click="ok()">OK</button>
+        </div>
+    </script>
+    
     <div class="container">
-      <section id="main_content">
-        {{ content }}
-      </section>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="row" style="position:relative">
+                    <div class="col-md-9" style="padding-bottom:10px">
+                        <h1>Slack Quizbot Quiz Builder<br></h1>
+                        Create a quiz for <a href="https://github.com/wallis2xk/slackquizbot" target="_blank">Slack Quizbot</a> to run
+                    </div>
+                    <div class="col-md-3" style="position: absolute; right:0; bottom:10px;">
+                        <button type="button" class="btn btn-xs" ng-click="openImportModal()" style="float:right">Import Quiz</button>
+                    </div>
+                </div>
+                <form class="form-horizontal">
+                    <accordion close-others="false" ui-sortable="sortableOptions" ng-model="questions">
+                        <accordion-group is-open="$last" ng-repeat="question in questions">
+                            <accordion-heading>Q{{$index+1}}: {{question.text}}</accordion-heading>
+                            <div class="form-group">
+                                <label class="control-label col-md-2" for="inputQuestion">Question:</label>
+                                <div class="col-md-10">
+                                    <textarea ng-model="question.text" class="form-control" id="inputQuestion" placeholder="Enter your question"></textarea>
+                                    <div ng-show="question.image!==undefined" class="input-group">
+                                        <input type="text" ng-model="question.image" class="form-control input-sm" placeholder="Image URL">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-danger btn-sm" ng-click="removeImage($index)"><span class="glyphicon glyphicon-remove"></span></button>
+                                        </span>
+                                    </div>
+                                    <div ng-show="question.image.length > 10">
+                                        <img ng-src="{{question.image}}" class="img-thumbnail" ng-click="previewImage($index)" width="200">    
+                                    </div>
+                                    <div ng-hide="question.image!==undefined">
+                                        <button type="button" class="btn btn-default btn-xs" ng-click="addImage($index)">Add image</button><span popover="Optional image. Tip: don't have the answer in the image URL!" popover-trigger="mouseenter" class="glyphicon glyphicon-question-sign"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group" ng-repeat="answer in question.answers">
+                                <label class="control-label col-md-2" for="inputQuestion">Answer{{(question.answers.length > 1 ? " " + ($index+1) : "")}}:</label>
+                                <div class="col-md-10">
+                                    <div ng-show="$first && $parent.$index == 0" ng-repeat="answerText in answer.text track by $index">
+                                        <input type="text" ng-model="answer.text[$index]" class="form-control" placeholder="Enter your answer">
+                                    </div>
+                                    <div ng-show="$first && $parent.$index > 0" class="input-group" ng-repeat="answerText in answer.text track by $index">
+                                        <input type="text" ng-model="answer.text[$index]" class="form-control" placeholder="Enter your answer">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-danger" ng-click="removeAnswer($parent.$parent.$index, $parent.$index)"><span class="glyphicon glyphicon-remove"></span></button>
+                                        </span>
+                                    </div>
+                                    <div ng-hide="$first" class="input-group" ng-repeat="answerText in answer.text track by $index">
+                                        <input type="text" ng-model="answer.text[$index]" class="form-control input-sm" placeholder="Answer alternative">
+                                        <span class="input-group-btn">
+                                            <button type="button" class="btn btn-danger btn-sm" ng-click="removeAlternative($parent.$parent.$index, $parent.$index, $index)"><span class="glyphicon glyphicon-remove"></span></button>
+                                        </span>
+                                    </div>
+                                    <button type="button" class="btn btn-default btn-xs" ng-click="addAlternative($parent.$index, $index)">Add alternative</button><span popover="An alternative which will also be accepted for this answer" popover-trigger="mouseenter" class="glyphicon glyphicon-question-sign"></span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="control-label col-md-2">&nbsp;</label>
+                                <div class="col-md-10">
+                                    <div ng-show="question.answers[0].text[0].length > 0">
+                                        <button type="button" class="btn btn-info btn-sm" ng-click="addAnswer($index)">Add another answer</button><span popover="Questions can have multiple answers which need to be answered to complete the question (e.g. Name the three most populated countries)" popover-trigger="mouseenter" class="glyphicon glyphicon-question-sign"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="control-label col-md-2">&nbsp;</label>
+                                <div class="col-md-10">
+                                    <button class="btn btn-default btn-sm" ng-click="question.isCollapsed = !question.isCollapsed">Options</button>
+                                </div>
+                            </div>
+                            <div collapse="!question.isCollapsed">
+                                <div class="form-group">
+                                    <label class="control-label col-md-2"><small>Time (seconds):</small></label>
+                                    <div class="col-md-2">
+                                        <input type="number" class="form-control input-sm" ng-model="question.time" min="5" max="10000" placeholder="Default: {{settings.questionTime}}">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="control-label col-md-2"><small>Points/answer:</small></label>
+                                    <div class="col-md-2">
+                                        <input type="number" class="form-control input-sm" ng-model="question.points" min="1" max="100" placeholder="Default: {{settings.pointsPerQuestion}}">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group" collapse="!question.isCollapsed" ng-show="question.answers.length > 1">
+                                <label class="control-label col-md-2"><small>Answers req:</small></label>
+                                <div class="col-md-2">
+                                    <input type="number" class="form-control input-sm" ng-model="question.answersNeeded" min="1" max="{{question.answers.length}}" placeholder="{{question.answers.length}}">
+                                </div>
+                            </div>
+                            <div style="float:right"><button type="button" class="btn btn-danger btn-xs" ng-click="removeQuestion($index)">Remove</button></div>
+                        </accordion-group>
+                    </accordion>
+                </form>
+                <div class="text-center">
+                    <button type="button" class="btn btn-primary" ng-click="addQuestion()">Add {{questions.length ? "New" : "First"}} Question</button><br><br>
+                    <button type="button" class="btn btn-default" ng-show="questions.length" ng-click="openSettingsModal()">Quiz Settings</button><br><br>
+                    <button type="button" class="btn btn-success" ng-show="questions.length" ng-click="downloadJSON()">Download JSON</button>
+                </div>
+            </div>
+        </div>
     </div>
-
-    {% if site.google_analytics %}
-      <script type="text/javascript">
-        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-        ga('create', '{{ site.google_analytics }}', 'auto');
-        ga('send', 'pageview');
-      </script>
-    {% endif %}
-  </body>
+</body>
 </html>
